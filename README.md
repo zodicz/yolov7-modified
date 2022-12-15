@@ -1,6 +1,6 @@
 # Mirrored Yolov7
 
-This repository is a slighly altered version of the [Yolov7](https://github.com/WongKinYiu/yolov7). With some slight modifications to plots.py and detect.py to add functionality to save the cropped out boundingboxes during detection like yolov5, since the v7 lacked that option.
+This repository is a slighly altered version of the [Yolov7](https://github.com/WongKinYiu/yolov7). With some slight modifications to plots.py and detect.py to add functionality to save the cropped out boundingboxes during detection like yolov5, since the v7 lacked that option. Use as a module by importing Detect and calling the method.
 
 ```shell
 python detect.py --weights "<path to weights>" --source "<path to images>" --conf 0.5 --project "<path to save the result in>" --save-crop 
