@@ -1,12 +1,10 @@
 import argparse
 import time
 from pathlib import Path
-
 import cv2
 import torch
 import torch.backends.cudnn as cudnn
 from numpy import random
-#sfsdfs
 from models.experimental import attempt_load
 from utils.datasets import LoadStreams, LoadImages
 from utils.general import check_img_size, check_requirements, check_imshow, non_max_suppression, apply_classifier, \
@@ -15,19 +13,62 @@ from utils.plots import plot_one_box, save_one_box
 from utils.torch_utils import select_device, load_classifier, time_synchronized, TracedModel
 
 
-def detect(save_img=False):
-    source, weights, view_img, save_txt, save_crop, imgsz, trace = opt.source, opt.weights, opt.view_img, opt.save_txt, opt.save_crop, opt.img_size, not opt.no_trace
-    save_img = not opt.nosave and not source.endswith('.txt')  # save inference images
+'''
+    Arguments
+    ('--weights', nargs='+', type=str, default='yolov7.pt', help='model.pt path(s)')
+    ('--source', type=str, default='inference/images', help='source')  # file/folder, 0 for webcam
+    ('--img-size', type=int, default=640, help='inference size (pixels)')
+    ('--conf-thres', type=float, default=0.25, help='object confidence threshold')
+    ('--iou-thres', type=float, default=0.45, help='IOU threshold for NMS')
+    ('--device', default='', help='cuda device, i.e. 0 or 0,1,2,3 or cpu')
+    ('--view-img', action='store_true', help='display results')
+    ('--save-txt', action='store_true', help='save results to *.txt')
+    ('--save-conf', action='store_true', help='save confidences in --save-txt labels')
+    ('--save-crop', action='store_true', help='save cropped prediction boxes')
+    ('--nosave', action='store_true', help='do not save images/videos')
+    ('--classes', nargs='+', type=int, help='filter by class: --class 0, or --class 0 2 3')
+    ('--agnostic-nms', action='store_true', help='class-agnostic NMS')
+    ('--augment', action='store_true', help='augmented inference')
+    ('--update', action='store_true', help='update all models')
+    ('--project', default='runs/detect', help='save results to project/name')
+    ('--name', default='exp', help='save results to project/name')
+    ('--exist-ok', action='store_true', help='existing project/name ok, do not increment')
+    ('--no-trace', action='store_true', help='don`t trace model')
+'''
+def detect(source, weights, conf_thres, save_crop):
+    weights = weights
+    source = source
+    imgsz = 640
+    img_size = imgsz
+    conf_thres = 0.5
+    iou_thres = 0.45
+    view_img = False
+    save_txt=False
+    save_conf = False
+    save_crop = True
+    device = ""
+    nosave = True
+    classes = 0
+    agnostic_nms = True
+    augment = True
+    project = "runs/detect"
+    name = "exp"
+    exist_ok = False
+    trace = True
+    save_img = nosave
+    
+    #source, weights, view_img, save_txt, save_crop, imgsz, trace = source, weights, view_img, save_txt, save_crop, img_size, not no_trace
+    #save_img = not nosave and not source.endswith('.txt')  # save inference images
     webcam = source.isnumeric() or source.endswith('.txt') or source.lower().startswith(
         ('rtsp://', 'rtmp://', 'http://', 'https://'))
 
     # Directories
-    save_dir = Path(increment_path(Path(opt.project) / opt.name, exist_ok=opt.exist_ok))  # increment run
+    save_dir = Path(increment_path(Path(project) / name, exist_ok=exist_ok))  # increment run
     (save_dir / 'labels' if save_txt else save_dir).mkdir(parents=True, exist_ok=True)  # make dir
 
     # Initialize
     set_logging()
-    device = select_device(opt.device)
+    device = select_device(device)
     half = device.type != 'cpu'  # half precision only supported on CUDA
 
     # Load model
@@ -36,7 +77,7 @@ def detect(save_img=False):
     imgsz = check_img_size(imgsz, s=stride)  # check img_size
 
     if trace:
-        model = TracedModel(model, device, opt.img_size)
+        model = TracedModel(model, device, img_size)
 
     if half:
         model.half()  # to FP16
@@ -79,16 +120,16 @@ def detect(save_img=False):
             old_img_h = img.shape[2]
             old_img_w = img.shape[3]
             for i in range(3):
-                model(img, augment=opt.augment)[0]
+                model(img, augment=augment)[0]
 
         # Inference
         t1 = time_synchronized()
         with torch.no_grad():   # Calculating gradients would cause a GPU memory leak
-            pred = model(img, augment=opt.augment)[0]
+            pred = model(img, augment=augment)[0]
         t2 = time_synchronized()
 
         # Apply NMS
-        pred = non_max_suppression(pred, opt.conf_thres, opt.iou_thres, classes=opt.classes, agnostic=opt.agnostic_nms)
+        pred = non_max_suppression(pred, conf_thres, iou_thres, classes=classes, agnostic=agnostic_nms)
         t3 = time_synchronized()
 
         # Apply Classifier
@@ -117,10 +158,11 @@ def detect(save_img=False):
                     s += f"{n} {names[int(c)]}{'s' * (n > 1)}, "  # add to string
 
                 # Write results
+                count = 1
                 for *xyxy, conf, cls in reversed(det):
                     if save_txt:  # Write to file
                         xywh = (xyxy2xywh(torch.tensor(xyxy).view(1, 4)) / gn).view(-1).tolist()  # normalized xywh
-                        line = (cls, *xywh, conf) if opt.save_conf else (cls, *xywh)  # label format
+                        line = (cls, *xywh, conf) if save_conf else (cls, *xywh)  # label format
                         with open(txt_path + '.txt', 'a') as f:
                             f.write(('%g ' * len(line)).rstrip() % line + '\n')
 
@@ -130,7 +172,8 @@ def detect(save_img=False):
                         
                     if save_crop:
                         c = int(cls)
-                        save_one_box(xyxy, imc, file=save_dir / 'crops' / names[c] / f'{p.stem}.jpg', BGR=True)
+                        save_one_box(xyxy, imc, file=save_dir / 'crops' / names[c] / f'{p.stem + "_" +str(count)}.jpg', BGR=True)
+                        count += 1
 
 
             # Print time (inference + NMS)
@@ -194,9 +237,9 @@ if __name__ == '__main__':
     #check_requirements(exclude=('pycocotools', 'thop'))
 
     with torch.no_grad():
-        if opt.update:  # update all models (to fix SourceChangeWarning)
-            for opt.weights in ['yolov7.pt']:
+        if update:  # update all models (to fix SourceChangeWarning)
+            for weights in ['yolov7.pt']:
                 detect()
-                strip_optimizer(opt.weights)
+                strip_optimizer(weights)
         else:
             detect()
