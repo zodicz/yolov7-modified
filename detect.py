@@ -35,7 +35,7 @@ from yolo.utils.torch_utils import select_device, load_classifier, time_synchron
     ('--exist-ok', action='store_true', help='existing project/name ok, do not increment')
     ('--no-trace', action='store_true', help='don`t trace model')
 '''
-def detect(source, weights, conf_thres, save_crop):
+def detect(source, weights):
     weights = weights
     source = source
     imgsz = 640
@@ -54,7 +54,7 @@ def detect(source, weights, conf_thres, save_crop):
     project = "runs/detect"
     name = "exp"
     exist_ok = False
-    trace = True
+    trace = False
     save_img = nosave
     
     #source, weights, view_img, save_txt, save_crop, imgsz, trace = source, weights, view_img, save_txt, save_crop, img_size, not no_trace
